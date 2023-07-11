@@ -749,6 +749,8 @@ export default {
         return Promise.all([ tryCreateLocalTracks, connect(roomName) ])
             .then(([ tracks, con ]) => {
 
+                APP.connection = con;
+
                 this._displayErrorsForCreateInitialLocalTracks(errors);
 
                 return [ tracks, con ];
@@ -915,7 +917,12 @@ export default {
      * @returns {void}
      */
     async prejoinStart(tracks) {
-        if (!_connectionPromise) {
+
+        // isPrejoinPageVisible check - temporary workaround when we call join from LobbyScreen not from PreJoinScreen
+        // and connection is already established
+        const isPrejoinVisible = isPrejoinPageVisible(APP.store.getState());
+
+        if (!_connectionPromise && isPrejoinVisible) {
             // The conference object isn't initialized yet. Wait for the promise to initialise.
             await new Promise(resolve => {
                 _onConnectionPromiseCreated = resolve;
@@ -926,7 +933,12 @@ export default {
         let con;
 
         try {
-            con = await _connectionPromise;
+            if (isPrejoinVisible) {
+                con = await _connectionPromise;
+            } else {
+                con = APP.connection;
+            }
+
             this.startConference(con, tracks);
         } catch (error) {
             logger.error(`An error occurred while trying to join a meeting from the prejoin screen: ${error}`);
